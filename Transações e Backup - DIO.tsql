@@ -1,0 +1,57 @@
+-- PARTE 1 – TRANSAÇÕES
+
+-- Desabilitar o autocommit
+SET autocommit = 0;
+
+-- Iniciar a transação
+START TRANSACTION;
+
+-- Modificações na base
+UPDATE produtos SET preco = preco * 1.10 WHERE categoria_id = 3;
+DELETE FROM pedidos WHERE status = 'cancelado';
+
+-- Confirmar a transação
+COMMIT;
+
+-- Ou desfazer, se necessário
+-- ROLLBACK;
+
+-- PARTE 2 – TRANSAÇÃO COM PROCEDURE
+
+DELIMITER //
+
+CREATE PROCEDURE AtualizaEstoque(IN produtoId INT, IN novaQtd INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION 
+    BEGIN
+        ROLLBACK;
+        SELECT 'Erro na transação. Alterações revertidas.' AS Mensagem;
+    END;
+
+    START TRANSACTION;
+    
+    SAVEPOINT antes_update;
+
+    -- Atualizar estoque
+    UPDATE produtos SET quantidade = novaQtd WHERE id = produtoId;
+
+    -- Verificação simulada
+    IF novaQtd < 0 THEN
+        ROLLBACK TO SAVEPOINT antes_update;
+        SELECT 'Quantidade inválida. Rollback parcial.' AS Aviso;
+    ELSE
+        COMMIT;
+        SELECT 'Transação concluída com sucesso.' AS Sucesso;
+    END IF;
+
+END //
+
+DELIMITER ;
+
+-- PARTE 3 – BACKUP E RECOVERY
+
+mysqldump -u root -p 
+
+mysql -u root -p ecommerce < backup_ecommerce.sql
+
+mysqldump -u root -p 
